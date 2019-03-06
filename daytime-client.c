@@ -12,19 +12,19 @@
 int main()
 {
   int connSock, in, i, flags;
-  struct sockaddr_in servaddr;
+  struct sockaddr_in6 servaddr;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sctp_event_subscribe events;
   char buffer[MAX_BUFFER+1];
 
   /* Create an SCTP TCP-Style Socket */
-  connSock = socket( AF_INET, SOCK_STREAM, IPPROTO_SCTP );
+  connSock = socket( AF_INET6, SOCK_STREAM, IPPROTO_SCTP );
 
   /* Specify the peer endpoint to which we'll connect */
   bzero( (void *)&servaddr, sizeof(servaddr) );
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_port = htons(MY_PORT_NUM);
-  servaddr.sin_addr.s_addr = inet_addr( "127.0.0.1" );
+  servaddr.sin6_family = AF_INET6;
+  servaddr.sin6_port = htons(MY_PORT_NUM);
+  servaddr.sin6_addr = in6addr_loopback;
 
   /* Connect to the server */
   connect( connSock, (struct sockaddr *)&servaddr, sizeof(servaddr) );

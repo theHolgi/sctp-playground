@@ -12,18 +12,18 @@
 int main()
 {
   int listenSock, connSock, ret;
-  struct sockaddr_in servaddr;
+  struct sockaddr_in6 servaddr;
   char buffer[MAX_BUFFER+1];
   time_t currentTime;
 
   /* Create SCTP TCP-Style Socket */
-  listenSock = socket( AF_INET, SOCK_STREAM, IPPROTO_SCTP );
+  listenSock = socket( AF_INET6, SOCK_STREAM, IPPROTO_SCTP );
 
   /* Accept connections from any interface */
   bzero( (void *)&servaddr, sizeof(servaddr) );
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = htonl( INADDR_ANY );
-  servaddr.sin_port = htons(MY_PORT_NUM);
+  servaddr.sin6_family = AF_INET6;
+  servaddr.sin6_addr = in6addr_any;
+  servaddr.sin6_port = htons(MY_PORT_NUM);
 
   /* Bind to the wildcard address (all) and MY_PORT_NUM */
   ret = bind( listenSock,

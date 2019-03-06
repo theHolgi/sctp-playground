@@ -19,13 +19,9 @@ char *msg = "hello\n";
 int main(int argc, char *argv[]) {
         int sockfd;
         int nread;
-        struct sockaddr_in serv_addr;
-        if (argc != 2) {
-                fprintf(stderr, "usage: %s IPaddr\n", argv[0]);
-                exit(1);
-        }
+        struct sockaddr_in6 serv_addr;
         /* create endpoint using TCP or SCTP */
-        sockfd = socket(AF_INET, SOCK_STREAM,
+        sockfd = socket(AF_INET6, SOCK_STREAM,
 #ifdef USE_SCTP
                         IPPROTO_SCTP
 #else
@@ -36,9 +32,9 @@ int main(int argc, char *argv[]) {
                 perror("socket creation failed");
                 exit(2); }
         /* connect to server */
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
-        serv_addr.sin_port = htons(ECHO_PORT);
+        serv_addr.sin6_family = AF_INET6;
+        serv_addr.sin6_addr = in6addr_loopback;
+        serv_addr.sin6_port = htons(ECHO_PORT);
         if (connect(sockfd,
                     (struct sockaddr *) &serv_addr,
                     sizeof(serv_addr)) < 0) {

@@ -17,10 +17,10 @@ char buf[SIZE];
 int main(int argc, char *argv[]) {
         int sockfd, client_sockfd;
         int nread, len;
-        struct sockaddr_in serv_addr, client_addr;
+        struct sockaddr_in6 serv_addr, client_addr;
 
         /* create endpoint using TCP or SCTP */
-        sockfd = socket(AF_INET, SOCK_STREAM,
+        sockfd = socket(AF_INET6, SOCK_STREAM,
 #ifdef USE_SCTP
                         IPPROTO_SCTP
 #else
@@ -32,9 +32,9 @@ int main(int argc, char *argv[]) {
                 exit(2);
         }
         /* bind address */
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-        serv_addr.sin_port = htons(ECHO_PORT);
+        serv_addr.sin6_family = AF_INET6;
+        serv_addr.sin6_addr = in6addr_any;
+        serv_addr.sin6_port = htons(ECHO_PORT);
         if (bind(sockfd,
                  (struct sockaddr *) &serv_addr,
                  sizeof(serv_addr)) < 0) {
