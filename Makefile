@@ -1,7 +1,9 @@
-OUTPUTS = daytime-server daytime-client echo-client echo-server
+PROJECTS = daytime echo rsync
+EXECUTABLES = rsync-server rsync-client
+OUTPUTS = $(addprefix out/, $(EXECUTABLES))
 CFLAGS = -g -lsctp
 
 all: $(OUTPUTS)
 
-%: %.c
+out/%: %.c
 	gcc  -o $(@) $(<) $(CFLAGS)

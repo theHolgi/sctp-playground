@@ -1,4 +1,2 @@
-daytime-client
-daytime-server
-echo-client
-echo-server
+out
+*.pcapng
