@@ -182,7 +182,7 @@ int main(int argc, char **argv)
           debug("Start: file %s length %d", filename, answer->file_length);
           handle->stream_id = answer->stream_id;
           handle->bytes_to_write = answer->file_length;
-          handle->fh = open(filename, O_CREAT|O_WRONLY, 0666);
+          handle->fh = open(filename, O_CREAT|O_WRONLY, answer->mode);
           if (answer->file_length > 0) {
             busy_flags.files_in_flight++;
           } else {

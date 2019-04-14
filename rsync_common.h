@@ -5,6 +5,8 @@
 #define MY_PORT_NUM	19000
 #define MASTER_STREAM 0
 
+#define min(a,b) (a<b?a:b)
+
 enum message_ids {
     // Client
     RSYNC_FILE_REQ,
@@ -34,6 +36,7 @@ struct rsync_dir_list_msg { // -- RSYNC_DIR_LIST_REQ
 struct rsync_file_send_msg { // -- RSYNC_FILE_START
    int message_id;      
    int stream_id;       // ID on which stream the file is going to be sent
+   int mode;            // file mode
    int file_length;     // length of the file
    int filename_length; // length of the filename
    // Followed by the filename itself

@@ -14,12 +14,23 @@
 #include <netinet/sctp.h>
 #include "rsync_common.h"
 
+#include <pthread.h>
+
 #define BUFFER_SIZE 4096
+
+#define FILE_CHUNK_SIZE 4096
 
 char *base_dir;  //< The base directory, that all file queries reference to
 
+struct send_file_args {
+  char *filename;
+  int stream_id;
+  int connSock;
+};
+
 void send_file_announce(char *filename, int connSock);
-void send_file(char *filename, int stream_id, int connSock);
+void* send_file(void *args);
+
 
 int main()
 {
@@ -89,11 +100,17 @@ int main()
         {
           struct rsync_file_msg *query = (struct rsync_file_msg *)buffer;
           char *filename = &buffer[sizeof(*query)];
+          struct send_file_args *send_file_arguments;
+          pthread_t thread_id;
           filename[query->filename_length] = 0; // null-terminate
           stream_number++;
           /* Read the filename */
           debug("Send file %s on stream %i",filename, stream_number);
-          send_file(filename, stream_number, connSock);
+          send_file_arguments = malloc(sizeof *send_file_arguments);
+          send_file_arguments->filename = strdup(filename);
+          send_file_arguments->stream_id= stream_number;
+          send_file_arguments->connSock = connSock;
+          pthread_create(&thread_id, NULL, send_file, send_file_arguments);
           break;
         }
       }
@@ -107,48 +124,56 @@ int main()
   return 0;
 }
 
-void send_file(char *filename, int stream_id, int connSock)
+void* send_file(void *args)
 {
+  struct send_file_args *thread_args = (struct send_file_args *)args;
   struct stat file_stats;
   int    ret;
   char   *filepath;
 
-  filepath = malloc(strlen(base_dir) + strlen(filename) + 2);
+  filepath = malloc(strlen(base_dir) + strlen(thread_args->filename) + 2);
   strcpy(filepath, base_dir);
   strcat(filepath, "/");
-  strcat(filepath, filename);
+  strcat(filepath, thread_args->filename);
   ret = stat(filepath, &file_stats);
   if (ret) {
     perror("Error on stat");
-    return;
+    return NULL;
   }
   // Announce the file
   {
     struct rsync_file_send_msg *announcement;
     size_t  announcement_length;
-    announcement_length = sizeof(*announcement) + strlen(filename);
+    announcement_length = sizeof(*announcement) + strlen(thread_args->filename);
     announcement = malloc(announcement_length+1); // Reserve space for message, filename and null-termination
     announcement->message_id =  RSYNC_FILE_START;
-    announcement->stream_id  = stream_id;
-    announcement->filename_length = strlen(filename);
+    announcement->stream_id  = thread_args->stream_id;
+    announcement->mode       = file_stats.st_mode;
+    announcement->filename_length = strlen(thread_args->filename);
     announcement->file_length = file_stats.st_size;
-    strcpy((char *)announcement + sizeof(*announcement), filename);
-    ret = sctp_sendmsg( connSock,
+    strcpy((char *)announcement + sizeof(*announcement), thread_args->filename);
+    ret = sctp_sendmsg( thread_args->connSock,
                     (void *)announcement, announcement_length, NULL, 0, 0, SCTP_UNORDERED, MASTER_STREAM, 0, 0 );
     if (ret < 0) perror("Error while sending answer");
     if (announcement->file_length > 0) {
       int    filedesc;
+      size_t bytes_to_write;
       char   *buffer;
       // Send the file
-      buffer = malloc(announcement->file_length+1);
+      buffer = malloc(FILE_CHUNK_SIZE);
       filedesc = open(filepath, O_RDONLY,0);
-      read(filedesc, buffer, announcement->file_length);
-      buffer[announcement->file_length] = 0;
-      ret = sctp_sendmsg(connSock, buffer, announcement->file_length, NULL, 0, 0, 0, stream_id, 0, 0);
-      if (ret < 0) {
-        perror("Error while writing on stream");
+      bytes_to_write = announcement->file_length;
+      while (bytes_to_write > 0) {
+        int bytes_read = min(bytes_to_write, FILE_CHUNK_SIZE);
+
+        read(filedesc, buffer, bytes_read);
+        ret = sctp_sendmsg(thread_args->connSock, buffer, bytes_read, NULL, 0, 0, 0, thread_args->stream_id, 0, 0);
+        if (ret < 0) {
+          perror("Error while writing on stream");
+        }
+        debug("Sent file content (%i of %i bytes on stream %i)", ret, bytes_to_write, thread_args->stream_id);
+        bytes_to_write -= bytes_read;
       }
-      debug("Sent file content (%i of %i bytes)", ret, announcement->file_length);
       free(announcement);
       free(buffer);
       close(filedesc);
@@ -157,6 +182,9 @@ void send_file(char *filename, int stream_id, int connSock)
     }
   }
   free(filepath);
+  free(thread_args->filename);
+  free(args);
+  pthread_exit(NULL);
 }
 
 void send_file_announce(char *filename, int connSock) {
